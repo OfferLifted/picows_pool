@@ -111,7 +111,8 @@ class WSPool:
 
     def process_data(self, msg: bytearray, client_id: int) -> None:
         """Called for each message we get from the data_queue."""
-        logging.debug(f"{self.name} client: {client_id}, msg: {msg}")
+        # logging.debug(f"{self.name} client: {client_id}, msg: {msg}")
+        pass
 
     async def handle_data(self) -> None:
         """
