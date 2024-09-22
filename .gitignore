@@ -1,0 +1,7 @@
+.DS_Store
+Pipfile
+Pipfile.lock
+profile.html
+profile.json
+__pycache__/
+*.pyc
