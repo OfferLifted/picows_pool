@@ -27,7 +27,8 @@ class WSClient(WSListener):
         output_queue (PoolQueue)          : message queue provided by the pool.
         connected (asyncio.Event)         : event flag to indicate connection state.
         latencies (deque)                 : deque storing last 100 latency values.
-        last_ping (int)                   : hold time of last sent ping.
+        last_ping (float)                 : hold time of last sent ping.
+        pong_recv (float)                 : hold time of last received pong.
         msg_seq (int)                     : holds amount of message the client has received.
         final_frame (bytearray)           : bytearray of a full message.
         transport (WSTransport)           : underlying transport of WSListener.
@@ -50,7 +51,8 @@ class WSClient(WSListener):
 
         self.connected: Event = Event()
         self.latencies: deque = deque([], maxlen=100)
-        self.last_ping: int = time_ns()
+        self.last_ping: float = time_ns()
+        self.pong_recv: float = time_ns()
         self.msg_seq: int = 0
         self.final_frame: bytearray = bytearray()
         self.transport: WSTransport | None = None
@@ -125,17 +127,16 @@ class WSClient(WSListener):
                     return
 
                 self.msg_seq += 1
-                hash = xxhash.xxh3_64_intdigest(self.final_frame)
-
                 self.output_queue.put_no_wait(
                     msg=(self.final_frame.copy(), self.client_id),
-                    hash=hash,
+                    hash=xxhash.xxh3_64_intdigest(self.final_frame),
                 )
                 self.final_frame.clear()
                 return
 
             if frame.msg_type == WSMsgType.PONG:
-                self.latencies.append((time_ns() - self.last_ping) // 1_000_000)
+                self.pong_recv = time_ns()
+                self.latencies.append((self.pong_recv - self.last_ping) // 1_000_000)
                 logging.debug(
                     f"client_id: {self.client_id} latency: {self.latencies[-1]}"
                 )

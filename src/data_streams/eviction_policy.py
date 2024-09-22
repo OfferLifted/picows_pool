@@ -64,6 +64,18 @@ class LatencyEvictionPolicy(EvictionPolicy):
             try:
                 if not client.connected.is_set():
                     restart_clients[client_id] = client
+                    await asyncio.sleep(0)
+                    continue
+
+                if (
+                    abs(client.pong_recv - client.last_ping) // 1_000_000_000
+                    > 2 * client.ping_interval
+                ):
+                    logging.debug(
+                        f"{self.name} stale connection detected for {client_id}, restarting."
+                    )
+                    restart_clients[client_id] = client
+                    await asyncio.sleep(0)
                     continue
 
                 mean_latency = np.mean(client.latencies)
@@ -71,6 +83,7 @@ class LatencyEvictionPolicy(EvictionPolicy):
                 logging.debug(
                     f"{self.name} client: {client_id} mean_latency: {mean_latency}"
                 )
+
                 if mean_latency > worst_latency:
                     worst_latency = mean_latency
                     worst_client = client
@@ -118,10 +131,23 @@ class MessageRateEvictionPolicy(EvictionPolicy):
             try:
                 if not client.connected.is_set():
                     restart_clients[client_id] = client
+                    await asyncio.sleep(0)
+                    continue
+
+                if (
+                    abs(client.pong_recv - client.last_ping) // 1_000_000_000
+                    > 2 * client.ping_interval
+                ):
+                    logging.debug(
+                        f"{self.name} stale connection detected for {client_id}, restarting."
+                    )
+                    restart_clients[client_id] = client
+                    await asyncio.sleep(0)
                     continue
 
                 msg_rate = client.msg_seq / (time() - client.start_time)
                 await asyncio.sleep(0)
+
                 logging.debug(f"{self.name} client: {client_id} msg_rate: {msg_rate}")
                 if msg_rate < worst_rate:
                     worst_rate = msg_rate
