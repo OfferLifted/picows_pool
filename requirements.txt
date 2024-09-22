@@ -1,0 +1,5 @@
+numpy==1.26.4; python_version >= '3.9'
+orjson==3.10.7; python_version >= '3.8'
+picows==1.2.2; python_version >= '3.8'
+uvloop==0.20.0; python_full_version >= '3.8.0'
+xxhash==3.5.0; python_version >= '3.7'
