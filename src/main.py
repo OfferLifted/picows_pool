@@ -15,7 +15,7 @@ async def main_bybit():
     pool = WSPool(
         pool_size=3,
         url="wss://stream.bybit.com/v5/public/linear",
-        eviction_policy="msg_rate",
+        eviction_policy="latency",
         eviction_interval=300,
         enable_ping=True,
         ping_interval=20,
