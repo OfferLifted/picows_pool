@@ -316,3 +316,5 @@ class WSClient(WSListener):
         """Resets both latency deque and msg_seq."""
         self.latencies = deque([], maxlen=100)
         self.msg_seq = 0
+        self.last_ping = time_ns()
+        self.pong_recv = time_ns()
