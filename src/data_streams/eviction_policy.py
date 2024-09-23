@@ -16,6 +16,8 @@ class EvictionPolicy(ABC):
         name (str): name of class used for logging.
     """
 
+    __slots__ = "name"
+
     def __init__(self) -> None:
         self.name: str = self.__class__.__name__
 
@@ -60,26 +62,29 @@ class LatencyEvictionPolicy(EvictionPolicy):
         worst_latency = -1
         worst_client = None
         worst_client_id = None
+        sleep_duration = 1 / len(connections)
+
         for client_id, client in connections.items():
             try:
                 if not client.connected.is_set():
                     restart_clients[client_id] = client
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(sleep_duration)
                     continue
 
                 if (
-                    abs(client.pong_recv - client.last_ping) // 1_000_000_000
+                    client.enable_ping
+                    and abs(client.pong_recv - client.last_ping) // 1_000_000_000
                     > 2 * client.ping_interval
                 ):
                     logging.debug(
                         f"{self.name} stale connection detected for {client_id}, restarting."
                     )
                     restart_clients[client_id] = client
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(sleep_duration)
                     continue
 
                 mean_latency = np.mean(client.latencies)
-                await asyncio.sleep(0)
+                await asyncio.sleep(sleep_duration)
                 logging.debug(
                     f"{self.name} client: {client_id} mean_latency: {mean_latency}"
                 )
@@ -89,12 +94,12 @@ class LatencyEvictionPolicy(EvictionPolicy):
                     worst_client = client
                     worst_client_id = client_id
 
-                await asyncio.sleep(0)
+                await asyncio.sleep(sleep_duration)
 
             except Exception:
                 logging.info(f"{self.name} failed to get latency of client {client_id}")
                 restart_clients[client_id] = client
-                await asyncio.sleep(0)
+                await asyncio.sleep(sleep_duration)
                 continue
         if worst_client_id is None or worst_client is None:
             logging.warning(f"{self.name} worst_client or worst_client_id not set.")
@@ -127,26 +132,28 @@ class MessageRateEvictionPolicy(EvictionPolicy):
         worst_rate = 999_999_999
         worst_client = None
         worst_client_id = None
+        sleep_duration = 1 / len(connections)
         for client_id, client in connections.items():
             try:
                 if not client.connected.is_set():
                     restart_clients[client_id] = client
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(sleep_duration)
                     continue
 
                 if (
-                    abs(client.pong_recv - client.last_ping) // 1_000_000_000
+                    client.enable_ping
+                    and abs(client.pong_recv - client.last_ping) // 1_000_000_000
                     > 2 * client.ping_interval
                 ):
                     logging.debug(
                         f"{self.name} stale connection detected for {client_id}, restarting."
                     )
                     restart_clients[client_id] = client
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(sleep_duration)
                     continue
 
                 msg_rate = client.msg_seq / (time() - client.start_time)
-                await asyncio.sleep(0)
+                await asyncio.sleep(sleep_duration)
 
                 logging.debug(f"{self.name} client: {client_id} msg_rate: {msg_rate}")
                 if msg_rate < worst_rate:
@@ -154,14 +161,14 @@ class MessageRateEvictionPolicy(EvictionPolicy):
                     worst_client = client
                     worst_client_id = client_id
 
-                await asyncio.sleep(0)
+                await asyncio.sleep(sleep_duration)
 
             except Exception:
                 logging.warning(
                     f"{self.name} failed to get msg_rate of client {client_id}"
                 )
                 restart_clients[client_id] = client
-                await asyncio.sleep(0)
+                await asyncio.sleep(sleep_duration)
                 continue
         if not worst_client_id or not worst_client:
             logging.warning(f"{self.name} worst_client or worst_client_id not set.")
